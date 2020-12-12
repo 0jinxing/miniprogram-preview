@@ -1,27 +1,55 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import * as path from 'path';
+import { spawnSync } from 'child_process';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+const EXTENSION_NAME = 'miniprogram-preview';
+const CLI_CONF = "miniprogram.cli";
+const STATUS_BAR_COMMAN = `${EXTENSION_NAME}.generate-qrcode`;
+
 export function activate(context: vscode.ExtensionContext) {
+	let cli: string = vscode.workspace.getConfiguration().get(CLI_CONF) || '';
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "miniprogram-preview" is now active!');
+	const commandDisposable = vscode.commands.registerCommand(STATUS_BAR_COMMAN, () => {
+		const rootPath = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri.fsPath : '';
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('miniprogram-preview.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+		if (!cli) {
+			vscode.window.showErrorMessage("请选配置 小程序 CLI 路径");
+			return;
+		}
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from miniprogram-preview!');
+		if (!rootPath) {
+			vscode.window.showErrorMessage("请选打开 小程序项目");
+			return;
+		}
+
+		const storagePath = context.storageUri?.fsPath;
+		if (!storagePath) {
+			vscode.window.showErrorMessage("获取临时目录失败");
+			return;
+		}
+
+		const imagePath = path.resolve(storagePath, 'qr.jpg');
+
+		debugger;
+		vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: '预览二维码生成中', cancellable: false }, (process) => {
+			return new Promise(resolve => {
+				const result = spawnSync('cmd.exe', ['/c', cli, 'preview', '--project', rootPath, '-f', 'image', '-o', "C:\\Users\\Lin\\Desktop\\qr.jpg"]);
+
+				const err = result.stderr.toString();
+				const out = result.stdout.toString();
+
+				process.report({ increment: 30 });
+			})
+		})
 	});
+	context.subscriptions.push(commandDisposable);
 
-	context.subscriptions.push(disposable);
+	const confDisposable = vscode.workspace.onDidChangeConfiguration(e => {
+		if (e.affectsConfiguration(CLI_CONF)) {
+			cli = vscode.workspace.getConfiguration().get<string>(CLI_CONF) || '';
+		}
+	});
+	context.subscriptions.push(confDisposable);
 }
 
-// this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
