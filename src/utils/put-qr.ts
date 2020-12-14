@@ -1,0 +1,1 @@
+export async function putQR(qrPath: string, apiURL: string) { }
